@@ -15,8 +15,8 @@ const (
 
 // filter limit
 var (
-	MaxLimitPerPage     = 500
-	DefaultLimitPerPage = 25
+	MaxLimitPerPage     = int64(500)
+	DefaultLimitPerPage = int64(25)
 	AllMatchers         = []string{
 		sqlLike,
 		sqlNotLike,
@@ -50,10 +50,10 @@ type Sort struct {
 
 // Pagination of the result
 type Pagination struct {
-	Page        int     `json:"page"`    // starts from 0
-	PerPage     int     `json:"perPage"` // number of record in one page
+	Page        int64   `json:"page"`    // starts from 0
+	PerPage     int64   `json:"perPage"` // number of record in one page
 	NextPageKey *string `json:"nextPageKey"`
-	offset      int
+	offset      int64
 }
 
 // EqFilter stores query term of "field=$value"
@@ -164,7 +164,7 @@ func (q *QueryTerm) IsEmpty() bool {
 }
 
 // Default value for pagination
-func (l *ListSearchArg) DefaultPerPage(perPage int) *ListSearchArg {
+func (l *ListSearchArg) DefaultPerPage(perPage int64) *ListSearchArg {
 	if l.Pagination != nil {
 		l.Pagination.PerPage = perPage
 	} else {
@@ -269,7 +269,7 @@ func (sc SortConditions) Clause(jsToField map[string]string) string {
 	return sb.String()
 }
 
-func (p *Pagination) Calculate(maxPerPage int) {
+func (p *Pagination) Calculate(maxPerPage int64) {
 	// get valid per-page count
 	perPage := p.PerPage
 	if p.PerPage <= 0 {
@@ -294,12 +294,12 @@ func (p *Pagination) Calculate(maxPerPage int) {
 }
 
 // Offset calculate sql offset (psql)
-func (p *Pagination) Offset() int {
+func (p *Pagination) Offset() int64 {
 	return p.offset
 }
 
 // Limit return valid number per page
-func (p *Pagination) Limit() int {
+func (p *Pagination) Limit() int64 {
 	return p.PerPage
 }
 
