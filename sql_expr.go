@@ -1,6 +1,4 @@
-package query
-
-import "strings"
+package squery
 
 // Ensure SQL expression implement Expression interface
 var _ Expression = (*SqlExpression)(nil)
@@ -28,7 +26,10 @@ func (se *SqlExpression) mappedField(term string) (string, error) {
 }
 
 // Builder interface, so that it can be passed to query
-func (se *SqlExpression) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
+func (se *SqlExpression) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
 	sb.WriteString(se.Clause)
 	return se.Args, nil
+}
+func (se *SqlExpression) IsEmpty() bool {
+	return se.Clause == ""
 }

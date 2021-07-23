@@ -1,4 +1,4 @@
-package query
+package squery
 
 type Functor interface {
 	Builder

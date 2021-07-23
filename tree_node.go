@@ -1,8 +1,7 @@
-package query
+package squery
 
 import (
 	"errors"
-	"strings"
 )
 
 // stores treenode
@@ -16,7 +15,7 @@ type treeNode struct {
 	isRoot bool
 }
 
-func (fn *treeNode) build(sb *strings.Builder, ph Placeholder, fm FnMapField) (*SqlExpression, error) {
+func (fn *treeNode) build(sb StringBuilder, ph Placeholder, fm FnMapField) (*SqlExpression, error) {
 	whereArg := SqlExpression{
 		ph: ph,
 		fm: fm,
@@ -45,18 +44,19 @@ func (fn *treeNode) isOr() bool {
 	return fn.Term == opOr
 }
 
-func (fn *treeNode) traverseNode(sb *strings.Builder, arg *SqlExpression) error {
-	sb.WriteRune(leftParenthesis)
-
+func (fn *treeNode) traverseNode(sb StringBuilder, arg *SqlExpression) error {
 	// number of children
 	nchildren := len(fn.Children)
 	switch nchildren {
 	case 0:
+		sb.WriteByte(bLParenthesis)
 		fn.writeLeaf(sb, arg)
+		sb.WriteByte(bRParenthesis)
 	case 1:
 		if fn.isRoot {
 			fn.Children[0].traverseNode(sb, arg)
 		} else {
+			sb.WriteByte(bLParenthesis)
 			if err := fn.tryWriteTerm(sb, arg); err != nil {
 				return err
 			}
@@ -64,8 +64,10 @@ func (fn *treeNode) traverseNode(sb *strings.Builder, arg *SqlExpression) error 
 				return err
 			}
 			fn.Children[0].writeLeaf(sb, arg)
+			sb.WriteByte(bRParenthesis)
 		}
 	default:
+		sb.WriteByte(bLParenthesis)
 		op := opToSQL[opAnd]
 		if fn.isOr() {
 			op = opToSQL[opOr]
@@ -75,19 +77,21 @@ func (fn *treeNode) traverseNode(sb *strings.Builder, arg *SqlExpression) error 
 			return err
 		}
 		for i := 1; i < nchildren; i++ {
+			sb.WriteByte(bSpace)
 			sb.WriteString(op)
+			sb.WriteByte(bSpace)
 			if err := fn.Children[i].traverseNode(sb, arg); err != nil {
 				return err
 			}
 		}
+		sb.WriteByte(bRParenthesis)
 	}
 
-	sb.WriteRune(rightParenthesis)
 	return nil
 }
 
 // writeLeaf node, i.e. node that don't has any children
-func (fn *treeNode) writeLeaf(sb *strings.Builder, arg *SqlExpression) error {
+func (fn *treeNode) writeLeaf(sb StringBuilder, arg *SqlExpression) error {
 	if fn.isOperator() {
 		if err := fn.tryWriteOperator(sb); err != nil {
 			return err
@@ -108,7 +112,9 @@ func (fn *treeNode) writeLeaf(sb *strings.Builder, arg *SqlExpression) error {
 		if fn.ValueType == tNull {
 			op = opToSQL[opIs]
 		}
+		sb.WriteByte(bSpace)
 		sb.WriteString(op)
+		sb.WriteByte(bSpace)
 		if err := fn.writeValue(sb, arg); err != nil {
 			return err
 		}
@@ -117,21 +123,21 @@ func (fn *treeNode) writeLeaf(sb *strings.Builder, arg *SqlExpression) error {
 }
 
 // try to write operator if term is operator
-func (fn *treeNode) tryWriteOperator(sb *strings.Builder) error {
+func (fn *treeNode) tryWriteOperator(sb StringBuilder) error {
 	if fn.isOperator() {
 		op, ok := opToSQL[fn.Term]
 		if !ok {
 			return errors.New(fn.Term + ": unknown operator")
 		}
-		sb.WriteRune(' ')
+		sb.WriteByte(bSpace)
 		sb.WriteString(op)
-		sb.WriteRune(' ')
+		sb.WriteByte(bSpace)
 	}
 	return nil
 }
 
 // try to write term if the term is not operator
-func (fn *treeNode) tryWriteTerm(sb *strings.Builder, arg *SqlExpression) error {
+func (fn *treeNode) tryWriteTerm(sb StringBuilder, arg *SqlExpression) error {
 	if fn.isRoot {
 		return nil
 	}
@@ -149,7 +155,7 @@ func (fn *treeNode) tryWriteTerm(sb *strings.Builder, arg *SqlExpression) error 
 }
 
 // write value section of the node
-func (fn *treeNode) writeValue(sb *strings.Builder, arg *SqlExpression) error {
+func (fn *treeNode) writeValue(sb StringBuilder, arg *SqlExpression) error {
 	switch fn.ValueType {
 	case tNull:
 		sb.WriteString("NULL")
@@ -161,13 +167,13 @@ func (fn *treeNode) writeValue(sb *strings.Builder, arg *SqlExpression) error {
 		if !ok {
 			return errors.New("argument is not array")
 		}
-		sb.WriteRune('(')
+		sb.WriteByte(bLParenthesis)
 		sb.WriteString(arg.ph.Next())
 		for i := 1; i < len(args); i++ {
-			sb.WriteRune(',')
+			sb.WriteByte(bComma)
 			sb.WriteString(arg.ph.Next())
 		}
-		sb.WriteRune(')')
+		sb.WriteByte(bRParenthesis)
 		arg.Args = append(arg.Args, args...)
 	case tArrayBetween:
 		arrArgs, ok := fn.Value.([]interface{})

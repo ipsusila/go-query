@@ -1,6 +1,7 @@
-package query
+package squery
 
 import (
+	"io"
 	"strconv"
 	"strings"
 
@@ -37,14 +38,17 @@ type Stringer interface {
 	String() string
 }
 
-type StringAccumulator interface {
+type StringBuilder interface {
 	Stringer
+	io.Writer
+	Len() int
+	WriteByte(c byte) error
 	WriteRune(r rune) (int, error)
 	WriteString(s string) (int, error)
 }
 
 type Builder interface {
-	Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error)
+	Build(sb StringBuilder, ph Placeholder) ([]interface{}, error)
 }
 
 // Term in expression
@@ -68,6 +72,7 @@ type Raw interface {
 // Expression builder
 type Expression interface {
 	Builder
+	IsEmpty() bool
 }
 
 // ExpressionBuilder
@@ -84,10 +89,10 @@ type ExpressionBuilder interface {
 	Lt(term Term, arg interface{}) Expression
 	Lte(term Term, arg interface{}) Expression
 	Like(term Term, arg interface{}) Expression
-	Ilike(term Term, arg interface{}) Expression
+	ILike(term Term, arg interface{}) Expression
 	SimilarTo(term Term, arg interface{}) Expression
 	NotLike(term Term, arg interface{}) Expression
-	NotIlike(term Term, arg interface{}) Expression
+	NotILike(term Term, arg interface{}) Expression
 	NotSimilarTo(term Term, arg interface{}) Expression
 	Between(term Term, arg1, arg2 interface{}) Expression
 	In(term Term, args ...interface{}) Expression
@@ -107,14 +112,17 @@ func (f F) String() string {
 func (r R) String() string {
 	return string(r)
 }
-func (r R) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
+func (r R) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
 	s := string(r)
 	if s != "" {
-		sb.WriteRune('(')
+		sb.WriteByte(bLParenthesis)
 		sb.WriteString(s)
-		sb.WriteRune(')')
+		sb.WriteByte(bRParenthesis)
 	}
 	return nil, nil
+}
+func (r R) IsEmpty() bool {
+	return string(r) == ""
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -124,18 +132,25 @@ func NewExpressionBuilder() ExpressionBuilder {
 	return exprBuilder{}
 }
 
+// e.g. name IS NULL
 type postExpr struct {
 	term Term
 	op   string
 }
+
+// e.g. NOT (name = 'putu')
 type notExpr struct {
 	expr Expression
 }
+
+// e.g. name = 'putu
 type binaryExpr struct {
 	term Term
 	op   string
 	arg  interface{}
 }
+
+// e.g. age BETWEEN 30 AND 40
 type ternaryExpr struct {
 	term Term
 	op1  string
@@ -144,105 +159,128 @@ type ternaryExpr struct {
 	arg2 interface{}
 }
 
+// e.g. age IN (30, 40, 50)
 type arrExpr struct {
 	term Term
 	op   string
 	args []interface{}
 }
 
+// e.g. (expr) OR (expr) AND (expr)
 type arrArgExpr struct {
 	op       string
 	exprList []Expression
 }
+
+// e.g. name in (select name from account where is_active = true)
 type rawExpr struct {
 	query string
 	args  []interface{}
 }
 
 // Post, e.g. <PARAM> IS NULL
-func (e postExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
-	if e.term == nil {
+func (e postExpr) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
+	if e.IsEmpty() {
 		return nil, nil
 	}
-	sb.WriteRune('(')
+	sb.WriteByte(bLParenthesis)
 	sb.WriteString(e.term.String())
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	sb.WriteString(e.op)
-	sb.WriteRune(')')
+	sb.WriteByte(bRParenthesis)
 
 	return nil, nil
 }
-func (e notExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
-	if e.expr == nil {
+func (e postExpr) IsEmpty() bool {
+	return e.term == nil || e.term.String() == ""
+}
+func (e notExpr) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
+	if e.IsEmpty() {
 		return nil, nil
 	}
-	sb.WriteRune('(')
+	sb.WriteByte(bLParenthesis)
 	sb.WriteString(sqlNot)
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	args, err := e.expr.Build(sb, ph)
-	sb.WriteRune(')')
+	sb.WriteByte(bRParenthesis)
 
 	return args, err
 }
+func (e notExpr) IsEmpty() bool {
+	return e.expr == nil || e.expr.IsEmpty()
+}
 
-func (e binaryExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
-	if e.term == nil {
+func (e binaryExpr) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
+	if e.IsEmpty() {
 		return nil, nil
 	}
-	sb.WriteRune('(')
+	sb.WriteByte(bLParenthesis)
 	sb.WriteString(e.term.String())
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	sb.WriteString(e.op)
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	sb.WriteString(ph.Next())
-	sb.WriteRune(')')
+	sb.WriteByte(bRParenthesis)
 
 	return []interface{}{e.arg}, nil
+}
+func (e binaryExpr) IsEmpty() bool {
+	return e.term == nil || e.term.String() == ""
 }
 
 // Expression form: TERM op1 ... op2 ...
 // Example: created_at BETWEEN $1 AND $2
 //          name ? ... : ...
-func (e ternaryExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
-	if e.term == nil {
+func (e ternaryExpr) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
+	if e.IsEmpty() {
 		return nil, nil
 	}
-	sb.WriteRune('(')
+	sb.WriteByte(bLParenthesis)
 	sb.WriteString(e.term.String())
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	sb.WriteString(e.op1)
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	sb.WriteString(ph.Next())
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	sb.WriteString(e.op2)
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	sb.WriteString(ph.Next())
-	sb.WriteRune(')')
+	sb.WriteByte(bRParenthesis)
 
 	return []interface{}{e.arg1, e.arg2}, nil
 }
+func (e ternaryExpr) IsEmpty() bool {
+	return e.term == nil || e.term.String() == ""
+}
 
 // Build expression
-func (e arrExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
-	if e.term == nil || len(e.args) == 0 {
+func (e arrExpr) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
+	if e.IsEmpty() {
 		return nil, nil
 	}
-	sb.WriteRune('(')
+	sb.WriteByte(bLParenthesis)
 	sb.WriteString(e.term.String())
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	sb.WriteString(e.op)
-	sb.WriteRune(' ')
+	sb.WriteByte(bSpace)
 	sb.WriteString(ph.Next())
 	for i := 1; i < len(e.args); i++ {
-		sb.WriteRune(',')
+		sb.WriteByte(bComma)
 		sb.WriteString(ph.Next())
 	}
-	sb.WriteRune(')')
+	sb.WriteByte(bRParenthesis)
 
 	return e.args, nil
 }
+func (e arrExpr) IsEmpty() bool {
+	return e.term == nil || len(e.args) == 0 || e.term.String() == ""
+}
 
-func (e arrArgExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
+func (e arrArgExpr) IsEmpty() bool {
+	return e.op == "" || len(e.exprList) == 0
+}
+
+func (e arrArgExpr) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
 	var args []interface{}
 	nexpr := len(e.exprList)
 	switch nexpr {
@@ -253,12 +291,15 @@ func (e arrArgExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, e
 	}
 
 	// more than one expression
-	sb.WriteRune('(')
+	sb.WriteByte(bLParenthesis)
 	for idx, expr := range e.exprList {
+		if expr.IsEmpty() {
+			continue
+		}
 		if idx > 0 {
-			sb.WriteRune(' ')
+			sb.WriteByte(bSpace)
 			sb.WriteString(e.op)
-			sb.WriteRune(' ')
+			sb.WriteByte(bSpace)
 		}
 		varg, err := expr.Build(sb, ph)
 		if err != nil {
@@ -266,11 +307,11 @@ func (e arrArgExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, e
 		}
 		args = append(args, varg...)
 	}
-	sb.WriteRune(')')
+	sb.WriteByte(bRParenthesis)
 
 	return args, nil
 }
-func (r rawExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
+func (r rawExpr) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
 	// Expand ? in case the args is an array
 	query, args, err := sqlx.In(r.query, r.args...)
 	if err != nil {
@@ -278,7 +319,7 @@ func (r rawExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, erro
 	}
 
 	if r.query != "" {
-		sb.WriteRune('(')
+		sb.WriteByte(bLParenthesis)
 	}
 
 	// replace placeholder with number
@@ -290,10 +331,13 @@ func (r rawExpr) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, erro
 	}
 	sb.WriteString(query)
 	if r.query != "" {
-		sb.WriteRune(')')
+		sb.WriteByte(bRParenthesis)
 	}
 
 	return args, nil
+}
+func (r rawExpr) IsEmpty() bool {
+	return r.query == ""
 }
 
 type exprBuilder struct{}
@@ -348,7 +392,7 @@ func (e exprBuilder) Lte(term Term, arg interface{}) Expression {
 func (e exprBuilder) Like(term Term, arg interface{}) Expression {
 	return binaryExpr{term: term, op: sqlLike, arg: arg}
 }
-func (e exprBuilder) Ilike(term Term, arg interface{}) Expression {
+func (e exprBuilder) ILike(term Term, arg interface{}) Expression {
 	return binaryExpr{term: term, op: sqlILike, arg: arg}
 }
 func (e exprBuilder) SimilarTo(term Term, arg interface{}) Expression {
@@ -357,7 +401,7 @@ func (e exprBuilder) SimilarTo(term Term, arg interface{}) Expression {
 func (e exprBuilder) NotLike(term Term, arg interface{}) Expression {
 	return binaryExpr{term: term, op: sqlNotLike, arg: arg}
 }
-func (e exprBuilder) NotIlike(term Term, arg interface{}) Expression {
+func (e exprBuilder) NotILike(term Term, arg interface{}) Expression {
 	return binaryExpr{term: term, op: sqlNotILike, arg: arg}
 }
 func (e exprBuilder) NotSimilarTo(term Term, arg interface{}) Expression {

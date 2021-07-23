@@ -1,4 +1,4 @@
-package query
+package squery
 
 import (
 	"bytes"
@@ -21,33 +21,22 @@ const (
 	chAnd            = '$'
 )
 
-// default key
-const (
-	defFilterKey = "filter"
-)
-
 // termMap map between field and value (either json/simple data)
 type termMap map[string]json.RawMessage
 
 // Tree stores tree structure of expression
 type Tree struct {
-	key  string
 	root *treeNode
 	data []byte
 	fm   FnMapField
 	expr *SqlExpression
 }
 
-// NexExpressionTree create filter tree representation from JSON with default key, i.e. "filter"
-func NexExpressionTree(data []byte) (*Tree, error) {
-	return NewExpressionTreeWithKey(data, defFilterKey)
-}
-
-// NewExpressionTreeWithKey create filter tree representation from JSON for given filter key
-func NewExpressionTreeWithKey(data []byte, key string) (*Tree, error) {
+// NewExpressionTree create filter tree representation from JSON with default key, i.e. "filter"
+func NewExpressionTree(data []byte, fm FnMapField) (*Tree, error) {
 	tree := &Tree{
 		data: data,
-		key:  key,
+		fm:   fm,
 	}
 	if err := tree.parse(); err != nil {
 		return nil, err
@@ -63,34 +52,47 @@ func (t *Tree) FieldMapper(fm FnMapField) *Tree {
 }
 
 // Build implement builder interface
-func (t *Tree) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
+func (t *Tree) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
 	if t.expr != nil {
 		// if already parsed, return it
 		return t.expr.Args, nil
 	}
 
 	// parse if the tree is not empty
-	if t.root != nil {
+	if !t.IsEmpty() {
 		expr, err := t.root.build(sb, ph, t.fm)
 		if err != nil {
 			return nil, err
 		}
+		expr.Clause = sb.String()
 		t.expr = expr
 	}
 	return nil, nil
 }
 
+// IsEmpty return true if the expression tree don't has data
+func (t *Tree) IsEmpty() bool {
+	return t.root == nil || len(t.root.Children) == 0
+}
+
 // SqlExpression return sql expression.
 // If this method is called before Build, it will return NULL.
 func (t *Tree) SqlExpression() *SqlExpression {
+	if t.expr == nil {
+		return &SqlExpression{}
+	}
 	return t.expr
 }
 
 // parse JSON data to tree
 func (t *Tree) parse() error {
 	// clean up data
-	i := 0
 	nd := len(t.data)
+	if nd == 0 {
+		return nil
+	}
+
+	i := 0
 	for i < nd {
 		switch t.data[i] {
 		case '\t', '\r', '\n', '\v', ' ':
@@ -101,7 +103,6 @@ func (t *Tree) parse() error {
 	}
 clean:
 	rootNode := treeNode{
-		Term:   t.key,
 		Data:   t.data[i:],
 		isRoot: true,
 	}
@@ -115,7 +116,8 @@ clean:
 
 func (t *Tree) parseToNode(nd *treeNode) error {
 	if len(nd.Data) == 0 {
-		return errors.New("empty value")
+		//return errors.New("empty value")
+		return nil
 	}
 
 	// create operator

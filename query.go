@@ -1,4 +1,4 @@
-package query
+package squery
 
 import (
 	"errors"
@@ -38,7 +38,7 @@ func NewQuery() Query {
 	return &query{}
 }
 
-func (q *query) build(sb *strings.Builder, ph Placeholder, isCount bool, cols ...Stringer) ([]interface{}, error) {
+func (q *query) build(sb StringBuilder, ph Placeholder, isCount bool, cols ...Stringer) ([]interface{}, error) {
 	if q.from == nil {
 		return nil, errors.New("FROM clause can not be empty")
 	}
@@ -49,7 +49,7 @@ func (q *query) build(sb *strings.Builder, ph Placeholder, isCount bool, cols ..
 	} else {
 		sb.WriteString(cols[0].String())
 		for idx := 1; idx < len(cols); idx++ {
-			sb.WriteRune(',')
+			sb.WriteByte(bComma)
 			sb.WriteString(cols[idx].String())
 		}
 	}
@@ -112,7 +112,11 @@ func (q *query) build(sb *strings.Builder, ph Placeholder, isCount bool, cols ..
 	return args, nil
 }
 
-func (q *query) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
+func (q *query) IsEmpty() bool {
+	return q.from == nil || q.from.String() == ""
+}
+
+func (q *query) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
 	return q.build(sb, ph, false)
 }
 func (q *query) From(name Stringer) Query {

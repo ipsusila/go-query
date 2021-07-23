@@ -1,2 +1,2 @@
-# go-query
-SQL query builder in golang
+# squery
+Simple SQL query builder in golang.

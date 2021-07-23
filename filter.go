@@ -1,4 +1,4 @@
-package query
+package squery
 
 import (
 	"encoding/json"
@@ -13,40 +13,26 @@ const (
 	DescendingOrder = "DESC"
 )
 
-// Valid Query Matcher operator
-const (
-	QueryLike               = "LIKE"
-	QueryNotLike            = "NOT LIKE"
-	QueryILike              = "ILIKE"
-	QuerySimilar            = "SIMILAR TO"
-	QueryNotSimilar         = "NOT SIMILAR TO"
-	QueryRegex              = "~"
-	QueryRegexInsensitve    = "~*"
-	QueryNotRegex           = "!~"
-	QueryNotRegexInsensitve = "!~*"
-)
-
 // filter limit
 var (
 	MaxLimitPerPage     = 500
 	DefaultLimitPerPage = 25
 	AllMatchers         = []string{
-		QueryLike,
-		QueryNotLike,
-		QueryILike,
-		QuerySimilar,
-		QueryNotSimilar,
-		QueryRegex,
-		QueryRegexInsensitve,
-		QueryNotRegex,
-		QueryNotRegexInsensitve,
+		sqlLike,
+		sqlNotLike,
+		sqlILike,
+		sqlNotILike,
+		sqlSimilarTo,
+		sqlNotSimilarTo,
+		sqlRegexMatch,
+		sqlIRegexMatch,
+		sqlNotRegexMatch,
+		sqlNotIRegexMatch,
 	}
 )
 
 // SortConditions stores list of sort items
 type SortConditions []*Sort
-
-type FnColumnMapPH func(string) (string, string, bool)
 
 // SelectColumn definition for column mapping
 // map between json->db->resultfield
@@ -108,54 +94,73 @@ type DataList struct {
 	Data       interface{} `json:"data"`
 }
 
-func (q *QueryTerm) IsEmpty() bool {
-	return strings.TrimSpace(q.Term) == "" || q.Matcher == ""
+type queryTermExp struct {
+	queryTerm    *QueryTerm
+	fullTextCols []string
+	fm           FnMapField
 }
 
-// Query Term to where
-func (q *QueryTerm) ToSqlWhere(fnMap FnColumnMapPH, defCols []string) (string, []interface{}, error) {
-	if q.IsEmpty() {
-		return "", nil, nil
+// NewQueryTermExpression convert query term to expression
+func NewQueryTermExpression(q *QueryTerm, fulltextCols []string, fm FnMapField) Expression {
+	return &queryTermExp{
+		queryTerm:    q,
+		fullTextCols: fulltextCols,
+		fm:           fm,
 	}
-	columns := defCols
-	if len(q.Fields) != 0 {
-		columns = q.Fields
+}
+
+func (q *queryTermExp) IsEmpty() bool {
+	return q.queryTerm == nil || q.queryTerm.IsEmpty()
+}
+
+func (q *queryTermExp) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
+	if q.queryTerm.IsEmpty() {
+		return nil, nil
+	}
+
+	// If fields is specified, otherwhise use fulltext cols
+	columns := q.fullTextCols
+	if len(q.queryTerm.Fields) != 0 {
+		columns = q.queryTerm.Fields
 	}
 
 	// verify matchers
 	matcher := ""
 	for _, m := range AllMatchers {
-		if strings.EqualFold(m, q.Matcher) {
+		if strings.EqualFold(m, q.queryTerm.Matcher) {
 			matcher = m
 			break
 		}
 	}
 	if matcher == "" {
-		return "", nil, errors.New("valid matcher keyword not found")
+		return nil, errors.New("valid matcher keyword not found")
 	}
 
 	numItem := 0
-	sb := strings.Builder{}
 	args := []interface{}{}
 	for _, col := range columns {
-		if field, ph, ok := fnMap(col); ok {
+		if field, err := q.fm(col); err == nil {
 			// construct clause, e.g. (name SIMILAR TO ?) OR (tile LIKE ?)
 			if numItem > 0 {
 				sb.WriteString(" OR ")
 			}
-			sb.WriteRune('(')
+			sb.WriteByte(bLParenthesis)
 			sb.WriteString(field)
-			sb.WriteRune(' ')
+			sb.WriteByte(bSpace)
 			sb.WriteString(matcher)
-			sb.WriteRune(' ')
-			sb.WriteString(ph)
-			sb.WriteRune(')')
+			sb.WriteByte(bSpace)
+			sb.WriteString(ph.Next())
+			sb.WriteByte(bRParenthesis)
 
-			args = append(args, q.Term)
+			args = append(args, q.queryTerm.Term)
 			numItem++
 		}
 	}
-	return sb.String(), args, nil
+	return args, nil
+}
+
+func (q *QueryTerm) IsEmpty() bool {
+	return strings.TrimSpace(q.Term) == "" || q.Matcher == ""
 }
 
 // Default value for pagination
@@ -220,7 +225,7 @@ func (s *Sort) Clause(jsToField map[string]string) string {
 	}
 
 	sb := strings.Builder{}
-	sb.WriteRune('(')
+	sb.WriteByte(bLParenthesis)
 	sb.WriteString(fields[0])
 	for i := 1; i < len(fields); i++ {
 		sb.WriteString(fields[i])
@@ -248,13 +253,13 @@ func (sc SortConditions) Clause(jsToField map[string]string) string {
 
 		// separate condition with ,
 		if nitem > 0 {
-			sb.WriteRune(',')
+			sb.WriteByte(bComma)
 		}
 
-		sb.WriteRune('(')
+		sb.WriteByte(bLParenthesis)
 		sb.WriteString(fields[0])
 		for i := 1; i < len(fields); i++ {
-			sb.WriteRune(',')
+			sb.WriteByte(bComma)
 			sb.WriteString(fields[i])
 		}
 		sb.WriteString(") ")
@@ -316,7 +321,7 @@ func QuoteSelectField(jsFields []string, jsToDbMap map[string]string) (string, [
 	for _, field := range jsFields {
 		if dbField, ok := jsToDbMap[field]; ok {
 			if nitem > 0 {
-				sb.WriteRune(',')
+				sb.WriteByte(bComma)
 			}
 			sb.WriteString(strconv.Quote(dbField))
 			nitem++
@@ -333,7 +338,7 @@ func JoinSelectColumns(cols []*SelectColumn) string {
 	nitem := 0
 	for _, col := range cols {
 		if nitem > 0 {
-			sb.WriteRune(',')
+			sb.WriteByte(bComma)
 		}
 		sb.WriteString(col.SelectField)
 	}

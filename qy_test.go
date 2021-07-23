@@ -1,12 +1,24 @@
-package query_test
+package squery_test
 
 import (
 	"strings"
 	"testing"
 	"time"
 
-	qy "github.com/ipsusila/go-query"
+	qy "github.com/ipsusila/squery"
 )
+
+func highlighSQL(t *testing.T, query string) {
+	/*
+		fmt.Println("Formatted SQL: ")
+		err := quick.Highlight(os.Stdout, query, "sql", "terminal", "monokai")
+		if err != nil {
+			t.Logf("Format error: %v", err)
+		}
+		fmt.Println()
+		fmt.Println()
+	*/
+}
 
 func TestQuery(t *testing.T) {
 	exp := qy.NewExpressionBuilder()
@@ -33,16 +45,21 @@ func TestQuery(t *testing.T) {
 	query, args, err := qry.From(qy.R("table")).Where(expr).Count()
 	t.Logf("Query: %s, args: %v, err: %v", query, args, err)
 
+	highlighSQL(t, query)
+
 	query, args, err = qry.Select(qy.F("name"), qy.F("address"))
 	t.Logf("Query: %s, args: %v, err: %v", query, args, err)
+
+	highlighSQL(t, query)
 }
 
-func TestFluentExpression(t *testing.T) {
+func TestExpressions(t *testing.T) {
 	fe := qy.NewExpressions()
 	exp := qy.NewExpressionBuilder()
 	b := fe.Set(exp.Eq(qy.F("abc"), 10)).
 		And(exp.Gt(qy.F("xyz"), 11)).
-		Or(exp.Like(qy.F("text"), "%ABC%"))
+		Or(exp.Like(qy.F("text"), "%ABC%")).
+		Or(nil).And(nil)
 	sb := strings.Builder{}
 	ph := qy.NewPsqlPlaceholder()
 	args, err := b.Build(&sb, ph)
@@ -50,3 +67,5 @@ func TestFluentExpression(t *testing.T) {
 	t.Logf("Expression: %s, args: %v, err: %v", sb.String(), args, err)
 
 }
+
+// ---

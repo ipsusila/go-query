@@ -1,6 +1,4 @@
-package query
-
-import "strings"
+package squery
 
 type Expressions interface {
 	Builder
@@ -22,12 +20,16 @@ func NewExpressions() Expressions {
 	return &chainableExpression{}
 }
 
-func (c *chainableExpression) Build(sb *strings.Builder, ph Placeholder) ([]interface{}, error) {
+func (c *chainableExpression) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
 	if c.expr != nil {
 		return c.expr.Build(sb, ph)
 	}
 	// empty expression
 	return nil, nil
+}
+
+func (c *chainableExpression) IsEmpty() bool {
+	return c.expr == nil || c.expr.IsEmpty()
 }
 
 // Expression return current expression
@@ -41,8 +43,12 @@ func (c *chainableExpression) Set(expr Expression) Expressions {
 	return c
 }
 
-// Or add OR operation to expression list
+// Or add OR operation to expression list.
+// TODO: when expr is nil
 func (c *chainableExpression) Or(expr Expression, exprs ...Expression) Expressions {
+	if expr == nil {
+		return c
+	}
 	if c.expr == nil {
 		if len(exprs) == 0 {
 			c.expr = arrArgExpr{
@@ -60,6 +66,9 @@ func (c *chainableExpression) Or(expr Expression, exprs ...Expression) Expressio
 
 // And adds AND operation to expression list
 func (c *chainableExpression) And(expr Expression, exprs ...Expression) Expressions {
+	if expr == nil {
+		return c
+	}
 	if c.expr == nil {
 		if len(exprs) == 0 {
 			c.expr = arrArgExpr{
