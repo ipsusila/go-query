@@ -6,9 +6,16 @@ import (
 	"strings"
 )
 
+type Selector interface {
+	Builder
+	Select(cols ...Stringer) (string, []interface{}, error)
+	RawSelect(cols ...string) (string, []interface{}, error)
+	Count() (string, []interface{}, error)
+}
+
 // Query builder
 type Query interface {
-	Builder
+	Selector
 	From(name Stringer) Query
 	Where(expr Expression) Query
 	Having(expr Expression) Query
@@ -19,9 +26,6 @@ type Query interface {
 	One() Query
 	OrderBy(clause Stringer) Query
 	GroupBy(clause Stringer) Query
-	Select(cols ...Stringer) (string, []interface{}, error)
-	RawSelect(cols ...string) (string, []interface{}, error)
-	Count() (string, []interface{}, error)
 }
 
 type query struct {
@@ -188,7 +192,6 @@ func (q *query) Select(cols ...Stringer) (string, []interface{}, error) {
 }
 
 func (q *query) Count() (string, []interface{}, error) {
-
 	sb := strings.Builder{}
 	ph := NewPsqlPlaceholder()
 	args, err := q.build(&sb, ph, true, R("COUNT(*)"))
