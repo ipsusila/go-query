@@ -53,11 +53,6 @@ func (t *Tree) FieldMapper(fm FnMapField) *Tree {
 
 // Build implement builder interface
 func (t *Tree) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
-	if t.expr != nil {
-		// if already parsed, return it
-		return t.expr.Args, nil
-	}
-
 	// parse if the tree is not empty
 	if !t.IsEmpty() {
 		expr, err := t.root.build(sb, ph, t.fm)
