@@ -1,8 +1,6 @@
 package squery
 
 import (
-	"io"
-	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -13,40 +11,6 @@ import (
 // Terminology
 // 1. Expression, contains: TERM {OPERATOR} ARG <- for binary expression
 
-type mysqlEscaper struct {
-	val string
-}
-
-func (m mysqlEscaper) String() string {
-	if len(m.val) > 0 {
-		// TODO: if already escaped?
-		return "`" + m.val + "`"
-	}
-	return m.val
-}
-
-// Abbreviation for field (sql field)
-type F string
-type R string
-
-func M(s string) Stringer {
-	return mysqlEscaper{s}
-}
-
-// Stringer interface for given value
-type Stringer interface {
-	String() string
-}
-
-type StringBuilder interface {
-	Stringer
-	io.Writer
-	Len() int
-	WriteByte(c byte) error
-	WriteRune(r rune) (int, error)
-	WriteString(s string) (int, error)
-}
-
 type Builder interface {
 	Build(sb StringBuilder, ph Placeholder) ([]interface{}, error)
 }
@@ -55,16 +19,6 @@ type Builder interface {
 type Term interface {
 	Stringer
 }
-
-type Parameter interface {
-	Stringer
-}
-
-// Operator of given expression
-type Operator interface {
-	Stringer
-}
-
 type Raw interface {
 	Builder
 }
@@ -98,31 +52,6 @@ type ExpressionBuilder interface {
 	In(term Term, args ...interface{}) Expression
 	NotIn(term Term, args ...interface{}) Expression
 	Raw(query string, args ...interface{}) Expression
-}
-
-// String representation of the field
-func (f F) String() string {
-	items := strings.Split(string(f), ".")
-	for i := 0; i < len(items); i++ {
-		items[i] = strconv.Quote(items[i])
-	}
-	return strings.Join(items, ".")
-}
-
-func (r R) String() string {
-	return string(r)
-}
-func (r R) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
-	s := string(r)
-	if s != "" {
-		sb.WriteByte(bLParenthesis)
-		sb.WriteString(s)
-		sb.WriteByte(bRParenthesis)
-	}
-	return nil, nil
-}
-func (r R) IsEmpty() bool {
-	return string(r) == ""
 }
 
 // ------------------------------------------------------------------------------------------------

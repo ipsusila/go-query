@@ -13,12 +13,14 @@ type Query interface {
 	Where(expr Expression) Query
 	Having(expr Expression) Query
 	Columns(cols ...Stringer) Query
+	RawColumns(cols ...string) Query
 	Limit(n int64) Query
 	Offset(n int64) Query
 	One() Query
 	OrderBy(clause Stringer) Query
 	GroupBy(clause Stringer) Query
 	Select(cols ...Stringer) (string, []interface{}, error)
+	RawSelect(cols ...string) (string, []interface{}, error)
 	Count() (string, []interface{}, error)
 }
 
@@ -136,6 +138,10 @@ func (q *query) Columns(cols ...Stringer) Query {
 	q.cols = append(q.cols, cols...)
 	return q
 }
+func (q *query) RawColumns(cols ...string) Query {
+	q.cols = append(q.cols, SSliceFrom(cols)...)
+	return q
+}
 func (q *query) One() Query {
 	q.limit = 1
 	return q
@@ -163,6 +169,9 @@ func (q *query) OrderBy(s Stringer) Query {
 func (q *query) GroupBy(s Stringer) Query {
 	q.groupBy = s
 	return q
+}
+func (q *query) RawSelect(cols ...string) (string, []interface{}, error) {
+	return q.Select(SSliceFrom(cols)...)
 }
 func (q *query) Select(cols ...Stringer) (string, []interface{}, error) {
 	selectCols := q.cols
