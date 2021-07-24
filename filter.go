@@ -114,7 +114,7 @@ func (q *queryTermExp) IsEmpty() bool {
 }
 
 func (q *queryTermExp) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
-	if q.queryTerm.IsEmpty() {
+	if q.IsEmpty() {
 		return nil, nil
 	}
 
