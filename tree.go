@@ -66,6 +66,7 @@ func (t *Tree) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
 		}
 		expr.Clause = sb.String()
 		t.expr = expr
+		return expr.Args, nil
 	}
 	return nil, nil
 }

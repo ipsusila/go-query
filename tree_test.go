@@ -46,11 +46,18 @@ const jsData4 = `
 }
 `
 
+const jsData5 = `
+{
+	"officialName": {"$like": "%123%"}
+}
+`
+
 var jsArray = []string{
 	jsData,
 	jsData2,
 	jsData3,
 	jsData4,
+	jsData5,
 }
 
 func parseJson(data []byte) (*qy.Tree, error) {
