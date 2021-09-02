@@ -63,13 +63,16 @@ func (q *query) build(sb StringBuilder, ph Placeholder, isCount bool, cols ...St
 	sb.WriteString(q.from.String())
 	if len(q.whereExprs) > 0 {
 		addWhere := true
-		for _, e := range q.whereExprs {
+		for idx, e := range q.whereExprs {
 			if e.IsEmpty() {
 				continue
 			}
 			if addWhere {
 				addWhere = false
 				sb.WriteString(" WHERE ")
+			}
+			if idx > 0 {
+				sb.WriteString(" AND ")
 			}
 			varg, err := e.Build(sb, ph)
 			if err != nil {
@@ -91,13 +94,16 @@ func (q *query) build(sb StringBuilder, ph Placeholder, isCount bool, cols ...St
 	// process HAVING clause
 	if len(q.havingExprs) > 0 {
 		addHaving := true
-		for _, e := range q.havingExprs {
+		for idx, e := range q.havingExprs {
 			if e.IsEmpty() {
 				continue
 			}
 			if addHaving {
 				addHaving = false
 				sb.WriteString(" HAVING ")
+			}
+			if idx > 0 {
+				sb.WriteString(" AND ")
 			}
 			varg, err := e.Build(sb, ph)
 			if err != nil {
