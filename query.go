@@ -61,7 +61,7 @@ func (q *query) build(sb StringBuilder, ph Placeholder, isCount bool, cols ...St
 	}
 	sb.WriteString(" FROM ")
 	sb.WriteString(q.from.String())
-	if len(q.whereExprs) > 0 {
+	if nexp := len(q.whereExprs); nexp > 0 {
 		addWhere := true
 		for idx, e := range q.whereExprs {
 			if e.IsEmpty() {
@@ -74,9 +74,16 @@ func (q *query) build(sb StringBuilder, ph Placeholder, isCount bool, cols ...St
 			if idx > 0 {
 				sb.WriteString(" AND ")
 			}
+
+			if nexp > 1 {
+				sb.WriteByte(bLParenthesis)
+			}
 			varg, err := e.Build(sb, ph)
 			if err != nil {
 				return nil, err
+			}
+			if nexp > 1 {
+				sb.WriteByte(bRParenthesis)
 			}
 			args = append(args, varg...)
 		}
@@ -92,7 +99,7 @@ func (q *query) build(sb StringBuilder, ph Placeholder, isCount bool, cols ...St
 	}
 
 	// process HAVING clause
-	if len(q.havingExprs) > 0 {
+	if nexp := len(q.havingExprs); nexp > 0 {
 		addHaving := true
 		for idx, e := range q.havingExprs {
 			if e.IsEmpty() {
@@ -105,9 +112,16 @@ func (q *query) build(sb StringBuilder, ph Placeholder, isCount bool, cols ...St
 			if idx > 0 {
 				sb.WriteString(" AND ")
 			}
+
+			if nexp > 1 {
+				sb.WriteByte(bLParenthesis)
+			}
 			varg, err := e.Build(sb, ph)
 			if err != nil {
 				return nil, err
+			}
+			if nexp > 1 {
+				sb.WriteByte(bRParenthesis)
 			}
 			args = append(args, varg...)
 		}
