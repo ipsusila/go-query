@@ -13,10 +13,10 @@ func buildQuery(b *testing.B, i int) {
 	tpl := `
 		SELECT DISTINCT {{COLUMNS}} FROM country AS tc
 		LEFT JOIN district AS td ON tc.id=td.id
-		WHERE {{WHERE_CLAUSE}} AND {{idField}} IN {{idField_value}} 
+		{{WHERE}} AND {{idField}} IN {{idField_value}} 
 		{{GROUPBY}} {{ORDERBY}} {{LIMIT}}
 	`
-	cntTpl := "SELECT COUNT(*) FROM country WHERE {{WHERE_CLAUSE}}"
+	cntTpl := "SELECT COUNT(*) FROM country {{WHERE}}"
 
 	const filter = `
 	{
@@ -85,10 +85,10 @@ func TestTemplateQuery(t *testing.T) {
 	tpl := `
 		SELECT DISTINCT {{COLUMNS}} FROM country AS tc
 		LEFT JOIN district AS td ON tc.id=td.id
-		WHERE {{WHERE_CLAUSE}} AND {{idField}} IN {{idField_value}} 
+		{{WHERE}} AND {{idField}} IN {{idField_value}} 
 		{{GROUPBY}} {{ORDERBY}} {{LIMIT}} {{OFFSET}}
 	`
-	cntTpl := "SELECT COUNT(*) FROM country WHERE {{WHERE_CLAUSE}}"
+	cntTpl := "SELECT COUNT(*) FROM country {{WHERE}}"
 
 	const filter = `
 	{

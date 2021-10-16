@@ -68,8 +68,8 @@ const (
 // for query template
 const (
 	tColumns = "{{COLUMNS}}"
-	tWhere   = "{{WHERE_CLAUSE}}"
-	tHaving  = "{{HAVING_CLAUSE}}"
+	tWhere   = "{{WHERE}}"
+	tHaving  = "{{HAVING}}"
 	tGroupBy = "{{GROUPBY}}"
 	tOrderBy = "{{ORDERBY}}"
 	tLimit   = "{{LIMIT}}"

@@ -128,9 +128,14 @@ func (q *templateQuery) build(qTpl string, ph Placeholder, isCount bool, cols ..
 	// replace where
 	if nexp := len(q.whereExprs); nexp > 0 {
 		sb := strings.Builder{}
+		addWhere := true
 		for idx, e := range q.whereExprs {
 			if e.IsEmpty() {
 				continue
+			}
+			if addWhere {
+				addWhere = false
+				sb.WriteString(" WHERE ")
 			}
 			if idx > 0 {
 				sb.WriteString(" AND ")
@@ -166,10 +171,15 @@ func (q *templateQuery) build(qTpl string, ph Placeholder, isCount bool, cols ..
 
 	// process HAVING clause
 	if nexp := len(q.havingExprs); nexp > 0 {
+		addHaving := true
 		sb := strings.Builder{}
 		for idx, e := range q.havingExprs {
 			if e.IsEmpty() {
 				continue
+			}
+			if addHaving {
+				addHaving = false
+				sb.WriteString(" HAVING ")
 			}
 			if idx > 0 {
 				sb.WriteString(" AND ")
