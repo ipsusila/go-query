@@ -44,6 +44,12 @@ type SelectColumn struct {
 	ResultField string
 }
 
+// DbColumn stores DB aliases
+type DbColumn struct {
+	ColumnExpr string `json:"columnExpr"`
+	Label      string `json:"label"`
+}
+
 // Sort stores sort information
 type Sort struct {
 	Fields []string `json:"fields"`
@@ -88,11 +94,11 @@ type ListSearchArg struct {
 }
 type TemplateListSearchArg struct {
 	ListSearchArg
-	SelectTemplate string
-	CountTemplate  string
-	FieldValues    FieldValues
-	FieldsMap      map[string]string
-	SelectColsMap  map[string]string
+	FieldValues    FieldValues         `json:"fieldValues"`
+	SelectTemplate string              `json:"-"`
+	CountTemplate  string              `json:"-"`
+	FieldsMap      map[string]string   `json:"-"`
+	SelectColsMap  map[string]DbColumn `json:"-"`
 }
 
 // DataList for storing many/list query result
@@ -213,11 +219,14 @@ func (t *TemplateListSearchArg) FieldMapper(jsField string) (string, error) {
 
 // SelectColumnsMapper map between JSON field to valid DB columns or snake_cased version
 func (t *TemplateListSearchArg) SelectColumnsMapper(jsField string) (Stringer, error) {
-	field, ok := t.SelectColsMap[jsField]
+	col, ok := t.SelectColsMap[jsField]
 	if !ok {
-		field = strcase.ToSnake(jsField)
+		col = DbColumn{
+			ColumnExpr: strcase.ToSnake(jsField),
+			Label:      strcase.ToScreamingDelimited(jsField, ' ', "", true),
+		}
 	}
-	return S(field), nil
+	return S(col.ColumnExpr + " AS " + jsField), nil
 }
 func (t *TemplateListSearchArg) FieldsToColumns() []Stringer {
 	if len(t.Fields) == 0 {
@@ -230,6 +239,38 @@ func (t *TemplateListSearchArg) FieldsToColumns() []Stringer {
 		cols = append(cols, col)
 	}
 	return cols
+}
+
+// QueryableFields return list of
+func (t *TemplateListSearchArg) QueryableFields() []string {
+	i := 0
+	qFields := make([]string, len(t.FieldsMap))
+	for key := range t.FieldsMap {
+		qFields[i] = key
+		i++
+	}
+	return qFields
+}
+
+// FieldLabel convert JSON Field to label
+func (t *TemplateListSearchArg) FieldLabel(jsField string) string {
+	var label string
+	if col, ok := t.SelectColsMap[jsField]; ok {
+		label = col.Label
+	}
+	if label == "" {
+		label = strcase.ToScreamingDelimited(jsField, ' ', "", true)
+	}
+	return label
+}
+
+// FieldsLabels convert from fields to label
+func (t *TemplateListSearchArg) FieldsLabels(fields []string) []string {
+	labels := []string{}
+	for _, jsField := range fields {
+		labels = append(labels, t.FieldLabel(jsField))
+	}
+	return labels
 }
 
 // IsZeror return true if object is not initialized yet
