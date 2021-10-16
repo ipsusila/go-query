@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/iancoleman/strcase"
 )
 
 // Sorting order
@@ -83,6 +85,14 @@ type ListSearchArg struct {
 	Filter     json.RawMessage `json:"filter"`
 	Query      *QueryTerm      `json:"query,omitempty"`
 	Fields     []string        `json:"fields,omitempty"`
+}
+type TemplateListSearchArg struct {
+	ListSearchArg
+	SelectTemplate string
+	CountTemplate  string
+	FieldValues    FieldValues
+	FieldsMap      map[string]string
+	SelectColsMap  map[string]string
 }
 
 // DataList for storing many/list query result
@@ -190,6 +200,36 @@ func (l *ListSearchArg) IsZero() bool {
 		l.Pagination == nil &&
 		len(l.Sorts) == 0 &&
 		l.Query == nil
+}
+
+// FieldMapper map between JSON field to valid DB fields or snake_cased version
+func (t *TemplateListSearchArg) FieldMapper(jsField string) (string, error) {
+	field, ok := t.FieldsMap[jsField]
+	if !ok {
+		return strcase.ToSnake(jsField), nil
+	}
+	return field, nil
+}
+
+// SelectColumnsMapper map between JSON field to valid DB columns or snake_cased version
+func (t *TemplateListSearchArg) SelectColumnsMapper(jsField string) (Stringer, error) {
+	field, ok := t.SelectColsMap[jsField]
+	if !ok {
+		field = strcase.ToSnake(jsField)
+	}
+	return S(field), nil
+}
+func (t *TemplateListSearchArg) FieldsToColumns() []Stringer {
+	if len(t.Fields) == 0 {
+		return []Stringer{S("*")}
+	}
+
+	cols := []Stringer{}
+	for _, field := range t.Fields {
+		col, _ := t.SelectColumnsMapper(field)
+		cols = append(cols, col)
+	}
+	return cols
 }
 
 // IsZeror return true if object is not initialized yet

@@ -65,6 +65,19 @@ const (
 	bQestionMark  byte = '?'
 )
 
+// for query template
+const (
+	tColumns = "{{COLUMNS}}"
+	tWhere   = "{{WHERE_CLAUSE}}"
+	tHaving  = "{{HAVING_CLAUSE}}"
+	tGroupBy = "{{GROUPBY}}"
+	tOrderBy = "{{ORDERBY}}"
+	tLimit   = "{{LIMIT}}"
+	tOffset  = "{{OFFSET}}"
+	tSelect  = "SELECT"
+	tWith    = "WITH"
+)
+
 // operator mapping for expression tree
 var opToSQL = map[string]string{
 	opAnd:          sqlAnd,

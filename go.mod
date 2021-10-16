@@ -3,6 +3,7 @@ module github.com/ipsusila/squery
 go 1.16
 
 require (
+	github.com/iancoleman/strcase v0.2.0
 	github.com/ipsusila/go-util v0.1.3
 	github.com/ipsusila/slog v0.3.2
 	github.com/jmoiron/sqlx v1.3.4

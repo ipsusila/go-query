@@ -33,7 +33,8 @@ const jsData3 = `
 		{"field": 10},
 		{"item": {"$gt": 300}},
 		{"value": {"$in": [100, 200]}},
-		{"age": {"$between": [20, 30]}}
+		{"age": {"$between": [20, 30]}},
+		{"empty": ""}
 	]
 }
 `
@@ -41,7 +42,7 @@ const jsData3 = `
 const jsData4 = `
 {
 	"$not": {
-		"field": 100
+		"fieldEmpty": ""
 	}
 }
 `

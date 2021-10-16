@@ -90,13 +90,13 @@ func (q *query) build(sb StringBuilder, ph Placeholder, isCount bool, cols ...St
 	}
 
 	// Add group by if not SELECT COUNT(*)
-	if !isCount {
-		// For select count, we do need limit, offset, order by
-		if q.groupBy != nil {
-			sb.WriteString(" GROUP BY")
-			sb.WriteString(q.groupBy.String())
-		}
+	//if !isCount {
+	// For select count, we do need limit, offset, order by
+	if q.groupBy != nil {
+		sb.WriteString(" GROUP BY ")
+		sb.WriteString(q.groupBy.String())
 	}
+	//}
 
 	// process HAVING clause
 	if nexp := len(q.havingExprs); nexp > 0 {
@@ -157,7 +157,7 @@ func (q *query) IsEmpty() bool {
 }
 
 func (q *query) Build(sb StringBuilder, ph Placeholder) ([]interface{}, error) {
-	return q.build(sb, ph, false)
+	return q.build(sb, ph, false, q.cols...)
 }
 func (q *query) From(name Stringer) Query {
 	q.from = name
