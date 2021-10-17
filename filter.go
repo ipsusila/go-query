@@ -226,7 +226,7 @@ func (t *TemplateListSearchArg) SelectColumnsMapper(jsField string) (Stringer, e
 			Label:      strcase.ToScreamingDelimited(jsField, ' ', "", true),
 		}
 	}
-	return S(col.ColumnExpr + " AS " + jsField), nil
+	return S(col.ColumnExpr + " AS " + strconv.Quote(jsField)), nil
 }
 func (t *TemplateListSearchArg) FieldsToColumns() []Stringer {
 	if len(t.Fields) == 0 {
