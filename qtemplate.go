@@ -156,6 +156,8 @@ func (q *templateQuery) build(qTpl string, ph Placeholder, isCount bool, cols ..
 
 		// replace where
 		query = strings.ReplaceAll(query, tWhere, sb.String())
+	} else {
+		query = strings.ReplaceAll(query, tWhere, "")
 	}
 
 	// Add group by if not SELECT COUNT(*)
@@ -198,6 +200,8 @@ func (q *templateQuery) build(qTpl string, ph Placeholder, isCount bool, cols ..
 			args = append(args, varg...)
 		}
 		query = strings.ReplaceAll(query, tHaving, sb.String())
+	} else {
+		query = strings.ReplaceAll(query, tHaving, "")
 	}
 
 	// ADD ORDER BY, limit and offset if not count(*)

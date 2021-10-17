@@ -16,7 +16,7 @@ func buildQuery(b *testing.B, i int) {
 		{{WHERE}} AND {{idField}} IN {{idField_value}} 
 		{{GROUPBY}} {{ORDERBY}} {{LIMIT}}
 	`
-	cntTpl := "SELECT COUNT(*) FROM country {{WHERE}}"
+	cntTpl := "SELECT {{COLUMNS}} FROM country {{WHERE}}"
 
 	const filter = `
 	{
@@ -88,7 +88,7 @@ func TestTemplateQuery(t *testing.T) {
 		{{WHERE}} AND {{idField}} IN {{idField_value}} 
 		{{GROUPBY}} {{ORDERBY}} {{LIMIT}} {{OFFSET}}
 	`
-	cntTpl := "SELECT COUNT(*) FROM country {{WHERE}}"
+	cntTpl := "SELECT {{COLUMNS}} FROM country {{WHERE}}"
 
 	const filter = `
 	{
