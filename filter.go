@@ -103,11 +103,11 @@ type ListSearchArg struct {
 }
 type TemplateListSearchArg struct {
 	ListSearchArg
-	FieldValues    FieldValues         `json:"fieldValues"`
-	SelectTemplate string              `json:"-"`
-	CountTemplate  string              `json:"-"`
-	FieldsMap      map[string]string   `json:"-"`
-	SelectColsMap  map[string]DbColumn `json:"-"`
+	FieldValues    FieldValues          `json:"fieldValues"`
+	SelectTemplate string               `json:"-"`
+	CountTemplate  string               `json:"-"`
+	FieldsMap      map[string]string    `json:"-"`
+	SelectColsMap  map[string]*DbColumn `json:"-"`
 }
 
 // DataList for storing many/list query result
@@ -230,7 +230,7 @@ func (t *TemplateListSearchArg) FieldMapper(jsField string) (string, error) {
 func (t *TemplateListSearchArg) SelectColumnsMapper(jsField string) (Stringer, error) {
 	col, ok := t.SelectColsMap[jsField]
 	if !ok {
-		col = DbColumn{
+		col = &DbColumn{
 			ColumnExpr: strcase.ToSnake(jsField),
 			Label:      strcase.ToScreamingDelimited(jsField, ' ', "", true),
 		}
