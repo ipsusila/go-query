@@ -48,7 +48,7 @@ func buildQuery(b *testing.B, i int) {
 			"item": "custom_item",
 		},
 		SelectColsMap: map[string]qy.DbColumn{
-			"age": {"data->>'age'", "Age"},
+			"age": {"data->>'age'", "Age", nil},
 		},
 	}
 
@@ -120,7 +120,7 @@ func TestTemplateQuery(t *testing.T) {
 			"item": "custom_item",
 		},
 		SelectColsMap: map[string]qy.DbColumn{
-			"age": {"data->>'age'", "Age"},
+			"age": {"data->>'age'", "Age", nil},
 		},
 	}
 

@@ -44,10 +44,19 @@ type SelectColumn struct {
 	ResultField string
 }
 
+// Property stores meta information for dynamic Json fields.
+type Property struct {
+	DefaultLabel    string            `json:"defaultLabel"`
+	TranslatedLabel map[string]string `json:"translatedLabel"`
+	Value           interface{}       `json:"value"`
+	DataType        *string           `json:"dataType"`
+}
+
 // DbColumn stores DB aliases
 type DbColumn struct {
-	ColumnExpr string `json:"columnExpr"`
-	Label      string `json:"label"`
+	ColumnExpr string  `json:"columnExpr"`
+	Label      string  `json:"label"`
+	DataType   *string `json:"dataType"`
 }
 
 // Sort stores sort information
